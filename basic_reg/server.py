@@ -44,15 +44,15 @@ def process():
         valid = False
         flash("Password must be at least 8 characters.")
 
-    if not strongRegex.match(request.form['password']):
-        flash("Password must contain at least one lowercase, one uppercase, one numeric, one special character, grandma's banana bread recipe, and a blood sacrifice.")
-        valid = False
+    # if not strongRegex.match(request.form['password']):
+    #     flash("Password must contain at least one lowercase, one uppercase, one numeric, one special character, grandma's banana bread recipe, and a blood sacrifice.")
+    #     valid = False
 
     if request.form["password"] != request.form["conf_password"]:
         valid = False
         flash("Passwords must match.")
 
-    db = connectToMySQL('users')
+    db = connectToMySQL('users_reg')
     validate_email_query = 'SELECT id FROM users WHERE email=%(email)s;'
     form_data = {
         'email': request.form['email']
@@ -84,9 +84,24 @@ def process():
     return redirect('/success')
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=["POST"])
 def login():
-    return redirect('/success')
+    db = connectToMySQL("users_reg")
+    query = "SELECT id, email, password FROM users WHERE email = %(le)s;"
+    stored_user = {
+        "le": request.form["lemail"]
+    }
+    selected_users = db.query_db(query,stored_user)
+    print(selected_users)
+    is_correct_login = bcrypt.check_password_hash(selected_users[0]["password"], request.form["lpassword"])
+    print(is_correct_login)
+    if len(selected_users) < 1:
+        flash("Email is incorrect")
+        return redirect('/')
+    elif is_correct_login:
+        session['user_id'] = selected_users[0]["id"]
+        print(session)
+        return redirect('/success')
 
 @app.route('/logout')
 def logout():
