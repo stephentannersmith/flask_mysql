@@ -15,11 +15,19 @@ def index():
     return render_template("index.html")
 
 @app.route('/success')
-def success():
+def tweet_landing():
     if 'user_id' not in session:
         return redirect('/')
-    
-    return render_template('success.html')
+    else: 
+        query = "SELECT * FROM users WHERE id_user = %(uid)s"
+        data = {
+            "uid": session["user_id"]
+        }
+        mysql = connectToMySQL("dojo_tweets")
+        result = mysql.query_db(query, data) #pylint: disable= unused-variable
+
+        return render_template('success.html')
+
 
 @app.route('/users/create', methods=["POST"])
 def process():
@@ -96,6 +104,9 @@ def login():
     is_correct_login = bcrypt.check_password_hash(selected_users[0]["password"], request.form["lpassword"])
     print(is_correct_login)
     if len(selected_users) < 1:
+        flash("Email is incorrect")
+        return redirect('/')
+    if len(request.form["password"]) < 1:
         flash("Email is incorrect")
         return redirect('/')
     elif is_correct_login:
