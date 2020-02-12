@@ -12,22 +12,42 @@ bcrypt = Bcrypt(app)
 
 @app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template("login_reg.html")
 
 @app.route('/success')
 def tweet_landing():
     if 'user_id' not in session:
         return redirect('/')
-    else: 
-        query = "SELECT * FROM users WHERE id_user = %(uid)s"
-        data = {
-            "uid": session["user_id"]
-        }
-        mysql = connectToMySQL("dojo_tweets")
-        result = mysql.query_db(query, data) #pylint: disable= unused-variable
+    
+    query = "SELECT * FROM users WHERE id_user = %(uid)s"
+    data = {"uid": session["user_id"]}
+    mysql = connectToMySQL("dojo_tweets")
+    result = mysql.query_db(query, data) #pylint: disable= unused-variable
+    if result:
+        return render_template('tweet_landing.html', user_data = result[0])
+    else:
+        return redirect('/')
 
-        return render_template('success.html')
+@app.route('/on_tweet')
+def on_tweet():
+    print(request.form.get('tweet_content'))
+    return redirect("/success")
 
+    #Creating tweets- 
+            #create a form for a tweet
+            #validate the tweet and store in db
+            #show validation errors on tweet create page
+        #Updating tweets
+            #create a form to update tweets
+            #set up the route and function
+            #show placeholder data
+        #Deleting tweets
+            #set up the route and function
+
+# @app.route('/like/<tweet_id>')
+# def like_tweet(tweet_id):
+#     query = "INSERT INTO liked_tweets (user_id, tweet_id) VALUES (%(u_id)s, %(t_id)s)"
+#     data = {'u_id': session}
 
 @app.route('/users/create', methods=["POST"])
 def process():
@@ -52,9 +72,9 @@ def process():
         valid = False
         flash("Password must be at least 8 characters.")
 
-    if not strongRegex.match(request.form['password']):
-        flash("Password must contain at least one lowercase, one uppercase, one numeric, one special character, grandma's banana bread recipe, and a blood sacrifice.")
-        valid = False
+    # if not strongRegex.match(request.form['password']):
+    #     flash("Password must contain at least one lowercase, one uppercase, one numeric, one special character, grandma's banana bread recipe, and a blood sacrifice.")
+    #     valid = False
 
     if request.form["password"] != request.form["conf_password"]:
         valid = False
