@@ -61,13 +61,18 @@
             </div>
             <div class="form-group">
               <label for="password">Password</label>
-              <input type="password" class="form-control" name="password">
+              <input type="password" class="form-control" name="lpassword">
             </div>
           </div>
           <div class="d-flex justify-content-center">
           <button type="submit" class="btn btn-primary">Login</button>
           </div>
       </form>
+      {% with messages = get_flashed_messages() %} {% if messages %} {% for message in messages %}
+								<p>{{message}}</p>
+                {% endfor %} 
+                {% endif %} 
+                {% endwith %}
     </div>
   </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.slim.min.js"></script>

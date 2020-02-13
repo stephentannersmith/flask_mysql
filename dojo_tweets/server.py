@@ -22,32 +22,73 @@ def tweet_landing():
     query = "SELECT * FROM users WHERE id_user = %(uid)s"
     data = {"uid": session["user_id"]}
     mysql = connectToMySQL("dojo_tweets")
-    result = mysql.query_db(query, data) #pylint: disable= unused-variable
+    result = mysql.query_db(query, data)
     if result:
-        return render_template('tweet_landing.html', user_data = result[0])
+        query = "SELECT tweets.id_tweet, tweets.authors, tweets.content, users.first_name, users.last_name FROM users JOIN tweets ON users.id_user = tweets.authors;"
+        mysql = connectToMySQL("dojo_tweets")
+        tweets = mysql.query_db(query)
+
+        return render_template('tweet_landing.html', user_data = result[0], tweets=tweets)
     else:
         return redirect('/')
 
-@app.route('/on_tweet')
+@app.route('/on_tweet', methods=["POST"])
 def on_tweet():
-    print(request.form.get('tweet_content'))
+    valid = True 
+    tweet_content = request.form.get('tweet_content')
+    if len(tweet_content) < 1:
+        valid = False
+        flash("Tweets must be at least 1 character long.")
+
+    if valid:
+        query = "INSERT INTO tweets (content, authors, created_at, updated_at) VALUES (%(tweet)s, %(user_fk)s, NOW(), NOW());"
+        data = {
+            "tweet": tweet_content,
+            "user_fk": session['user_id']
+        }
+        mysql = connectToMySQL("dojo_tweets")
+        mysql.query_db(query, data)
+    
+    return redirect('/success')
+
+@app.route("/on_delete/<tweet_id>")
+def on_delete(tweet_id):
+    if 'user_id' not in session:
+        return redirect('/')
+    query = "DELETE FROM tweets WHERE tweets.id_tweet = %(tweet_id)s"
+    data = {'tweet_id': tweet_id}
+    mysql = connectToMySQL("dojo_tweets")
+    mysql.query_db(query, data)
+
+    return redirect('/success')
+
+@app.route("/edit/<tweet_id>")
+def edit_form(tweet_id):
+    query = "SELECT tweets.id_tweet, tweets.content FROM tweet WHERE tweets.id_tweet = %(tweet_id)s"
+    data = {"tweet_id": tweet_id}
+    mysql = connectToMySQL("dojo_tweets")
+    tweet = mysql.query_db(query, data)
+    if tweet:
+        return render_template("tweet_edit.html", tweet_data=tweet[0])
     return redirect("/success")
 
-    #Creating tweets- 
-            #create a form for a tweet
-            #validate the tweet and store in db
-            #show validation errors on tweet create page
-        #Updating tweets
-            #create a form to update tweets
-            #set up the route and function
-            #show placeholder data
-        #Deleting tweets
-            #set up the route and function
+@app.route("/on_edit/<tweet_id>", methods=["POST"])
+def on_edit(tweet_id):
+    query = "UPDATE tweets SET tweets.content = %(tweet)s WHERE tweets.id_tweet = %(tweet_id)s "
+    data = { "tweet": request.form.get("tweet_edit"), "tweet_id": tweet_id }
+    mysql = connectToMySQL("dojo_tweets")
+    mysql.query_db(query, data)
 
-# @app.route('/like/<tweet_id>')
-# def like_tweet(tweet_id):
-#     query = "INSERT INTO liked_tweets (user_id, tweet_id) VALUES (%(u_id)s, %(t_id)s)"
-#     data = {'u_id': session}
+    return redirect("/success")
+
+@app.route('/like/<tweet_id>')
+def like_tweet(tweet_id):
+    query = "INSERT INTO liked_tweets (user_id, tweet_id) VALUES (%(u_id)s, %(t_id)s)"
+    data = {'u_id': session['user_id'], 't_id': tweet_id}
+    mysql = connectToMySQL("dojo_tweets")
+    mysql.query_db(query, data)
+
+    return redirect("/success")
 
 @app.route('/users/create', methods=["POST"])
 def process():
@@ -80,8 +121,8 @@ def process():
         valid = False
         flash("Passwords must match.")
 
-    db = connectToMySQL('users_reg')
-    validate_email_query = 'SELECT id FROM users WHERE email=%(email)s;'
+    db = connectToMySQL('dojo_tweets')
+    validate_email_query = 'SELECT email FROM users WHERE email=%(email)s;'
     form_data = {
         'email': request.form['email']
     }
@@ -98,7 +139,7 @@ def process():
 
     pw_hash = bcrypt.generate_password_hash(request.form['password'])
     
-    db = connectToMySQL("users_reg")
+    db = connectToMySQL("dojo_tweets")
     create_query = "INSERT INTO users (first_name, last_name, email, password, created_at, updated_at) VALUES (%(fn)s, %(ln)s, %(em)s, %(password_hash)s, NOW(), NOW());"
     create_data = {
         "fn": request.form["first_name"],
@@ -111,28 +152,27 @@ def process():
     session['user_id'] = user_id
     return redirect('/success')
 
-
 @app.route('/login', methods=["POST"])
 def login():
-    db = connectToMySQL("users_reg")
-    query = "SELECT id, email, password FROM users WHERE email = %(le)s;"
+    db = connectToMySQL("dojo_tweets")
+    query = "SELECT users.id_user, users.email, users.password FROM users WHERE email = %(le)s;"
     stored_user = {
         "le": request.form["lemail"]
     }
     selected_users = db.query_db(query,stored_user)
-    print(selected_users)
     is_correct_login = bcrypt.check_password_hash(selected_users[0]["password"], request.form["lpassword"])
-    print(is_correct_login)
     if len(selected_users) < 1:
-        flash("Email is incorrect")
+        flash("Email must be at least 1 character long.")
         return redirect('/')
-    if len(request.form["password"]) < 1:
-        flash("Email is incorrect")
+    if len(request.form["lpassword"]) < 1:
+        flash("Password must be at least 1 character long.")
+        return redirect('/')
+    if not is_correct_login:
+        flash("Password is incorrect")
         return redirect('/')
     elif is_correct_login:
-        session['user_id'] = selected_users[0]["id"]
-        print(session)
-        return redirect('/success')
+        session['user_id'] = selected_users[0]["id_user"]
+    return redirect('/success')
 
 @app.route('/logout')
 def logout():
