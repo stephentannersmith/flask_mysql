@@ -28,7 +28,16 @@ def tweet_landing():
         mysql = connectToMySQL("dojo_tweets")
         tweets = mysql.query_db(query)
 
-        return render_template('tweet_landing.html', user_data = result[0], tweets=tweets)
+        query = "SELECT liked_tweets.tweet_id FROM liked_tweets WHERE liked_tweets.user_id = %(u_id)s"
+        data = {'u_id': session['user_id']}
+        mysql = connectToMySQL("dojo_tweets")
+        tweets_loggedin_user_likes = mysql.query_db(query, data)
+
+        l_t_i = [tweet['tweet_id'] for tweet in tweets_loggedin_user_likes]
+
+        print(l_t_i)
+
+        return render_template('tweet_landing.html', user_data = result[0], tweets=tweets, l_t_i=l_t_i)
     else:
         return redirect('/')
 
@@ -51,31 +60,31 @@ def on_tweet():
     
     return redirect('/success')
 
-@app.route("/on_delete/<tweet_id>")
-def on_delete(tweet_id):
+@app.route("/on_delete/<id_tweet>")
+def on_delete(id_tweet):
     if 'user_id' not in session:
         return redirect('/')
-    query = "DELETE FROM tweets WHERE tweets.id_tweet = %(tweet_id)s"
-    data = {'tweet_id': tweet_id}
+    query = "DELETE FROM tweets WHERE tweets.id_tweet = %(id_tweet)s"
+    data = {'id_tweet': id_tweet}
     mysql = connectToMySQL("dojo_tweets")
     mysql.query_db(query, data)
 
     return redirect('/success')
 
-@app.route("/edit/<tweet_id>")
-def edit_form(tweet_id):
-    query = "SELECT tweets.id_tweet, tweets.content FROM tweet WHERE tweets.id_tweet = %(tweet_id)s"
-    data = {"tweet_id": tweet_id}
+@app.route("/edit/<id_tweet>")
+def edit_form(id_tweet):
+    query = "SELECT tweets.id_tweet, tweets.content FROM tweets WHERE tweets.id_tweet = %(id_tweet)s"
+    data = {"id_tweet": id_tweet}
     mysql = connectToMySQL("dojo_tweets")
     tweet = mysql.query_db(query, data)
     if tweet:
         return render_template("tweet_edit.html", tweet_data=tweet[0])
     return redirect("/success")
 
-@app.route("/on_edit/<tweet_id>", methods=["POST"])
-def on_edit(tweet_id):
-    query = "UPDATE tweets SET tweets.content = %(tweet)s WHERE tweets.id_tweet = %(tweet_id)s "
-    data = { "tweet": request.form.get("tweet_edit"), "tweet_id": tweet_id }
+@app.route("/on_edit/<id_tweet>", methods=["POST"])
+def on_edit(id_tweet):
+    query = "UPDATE tweets SET tweets.content = %(tweet)s WHERE tweets.id_tweet = %(id_tweet)s "
+    data = { "tweet": request.form.get("tweet_edit"), "id_tweet": id_tweet }
     mysql = connectToMySQL("dojo_tweets")
     mysql.query_db(query, data)
 
@@ -89,6 +98,34 @@ def like_tweet(tweet_id):
     mysql.query_db(query, data)
 
     return redirect("/success")
+
+@app.route('/unlike/<tweet_id>')
+def unlike_tweet(tweet_id):
+    query = "DELETE FROM liked_tweets WHERE user_id = %(u_id)s AND tweet_id = %(t_id)s"
+    data = {'u_id': session['user_id'], 't_id': tweet_id}
+    mysql = connectToMySQL("dojo_tweets")
+    mysql.query_db(query, data)
+
+    return redirect("/success")
+
+@app.route('/details/<id_tweet>')
+def details_tweet(id_tweet):
+    query = "SELECT users.first_name, users.last_name, tweets.created_at, tweets.content FROM users JOIN tweets ON users.id_user = tweets.authors WHERE tweets.id_tweet = %(tid)s"
+    data = {'tid': id_tweet}
+    mysql = connectToMySQL("dojo_tweets")
+    tweet_data = mysql.query_db(query, data)
+    if tweet_data:
+        tweet_data = tweet_data[0]
+    print(tweet_data)
+
+    query = "SELECT users.first_name, users.last_name FROM liked_tweets JOIN users ON users.id_user = liked_tweets.user_id WHERE liked_tweets.tweet_id = %(tid)s"
+    data = {'tid': id_tweet}
+    mysql = connectToMySQL("dojo_tweets")
+    like_data = mysql.query_db(query, data)
+    if like_data:
+        like_data = like_data[0]
+
+    return render_template("details.html", tweet_data=tweet_data, like_data=like_data)
 
 @app.route('/users/create', methods=["POST"])
 def process():
@@ -151,6 +188,15 @@ def process():
     user_id = db.query_db(create_query, create_data)
     session['user_id'] = user_id
     return redirect('/success')
+
+@app.route("/follow_users")
+def show_follow_users():
+    # look for users i have already followed
+    query = "SELECT FROM user_has_followers WHERE follower = %(uid)s"
+    data = {'uid': session['user_id']}
+    mysql = connectToMySQL("dojo_tweets")
+    followed_users = [user['id_user'] for user in mysql.query_db(query,data)]
+    print(followed_users)
 
 @app.route('/login', methods=["POST"])
 def login():
