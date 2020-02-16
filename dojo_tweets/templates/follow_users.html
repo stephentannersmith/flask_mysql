@@ -9,9 +9,42 @@
 <title>Follow Users</title>
 </head>
 <body>
-<table>
-    
-</table>
+  Users not Followed
+  <table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in not_followed %}
+      <tr>
+        <td>{{user['first_name']}} {{user['last_name']}}</td>
+        <td><a href="/on_follow/{{user['user']}}">Follow</a></td>
+      </tr>
+      {% endfor %}
+    <td></td>
+    {}
+  </tbody>
+  </table>
+  Followed Users
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Actions</th>
+    </tr>
+    <tbody>
+      {% for user in followed %}
+      <tr>
+        <td>{{user['first_name']}} {{user['last_name']}}</td>
+        <td><a href="/on_unfollow/{{user['user']}}">Follow</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.slim.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.4.1/js/bootstrap.min.js"></script>

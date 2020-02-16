@@ -192,11 +192,33 @@ def process():
 @app.route("/follow_users")
 def show_follow_users():
     # look for users i have already followed
-    query = "SELECT FROM user_has_followers WHERE follower = %(uid)s"
+    query = "SELECT * FROM user_has_followers WHERE follower = %(uid)s"
     data = {'uid': session['user_id']}
     mysql = connectToMySQL("dojo_tweets")
-    followed_users = [user['id_user'] for user in mysql.query_db(query,data)]
-    print(followed_users)
+    followed_users = mysql.query_db(query,data)
+
+    followed_users_list = [info['user'] for info in followed_users]
+    
+    followed = []
+    not_followed = []
+
+    for user in followed_users:
+        if user['user'] == session['user_id']:
+            continue
+        if user['user'] in followed_users_list:
+            followed.append(user)
+        else:
+            not_followed.append(user)
+
+    return render_template("follow_users.html", followed=followed, not_followed=not_followed)
+
+@app.route("/on_follow/<user_id>")
+def follow(user_id):
+    mysql = connectToMySQL("dojo_tweets")
+    query = "INSERT INTO user_has_followers (user,follower) VALUES (%(u_id)s, %(f_id)s"
+    data = {'u_id': session['user_id'], 'f_id': user_id}
+    mysql.query_db(query, data)
+    return redirect("/follow_users")
 
 @app.route('/login', methods=["POST"])
 def login():
